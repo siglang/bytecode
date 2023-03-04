@@ -1,36 +1,37 @@
 use std::fmt;
 
 pub type Value = isize;
-pub type Pointer = usize;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Op {
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Op<'a> {
     pub opcode: Opcode,
-    pub data: Option<OpData>,
+    pub data: Option<&'a [OpData]>,
 }
 
-impl fmt::Display for Op {
+impl fmt::Display for Op<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.opcode)?;
 
-        if let Some(data) = &self.data {
-            match data {
-                OpData::Value(value) => write!(f, " {value} ({value:01x})"),
-                OpData::Pointer(pointer) => write!(f, " {pointer}"),
+        if let Some(data) = self.data {
+            for data in data {
+                write!(f, " {data}")?;
             }
-        } else {
-            Ok(())
+        }
+
+        Ok(())
+    }
+}
+
+impl<'a> Op<'a> {
+    pub fn new(opcode: Opcode, data: Option<&'a [OpData]>) -> Self {
+        Self {
+            opcode,
+            data: *Box::leak(Box::new(data)),
         }
     }
 }
 
-impl Op {
-    pub fn new(opcode: Opcode, data: Option<OpData>) -> Self {
-        Self { opcode, data }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(u8)]
 #[non_exhaustive]
 pub enum Opcode {
@@ -50,7 +51,7 @@ pub enum Opcode {
 impl fmt::Display for Opcode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "[0x{:01x}] ", unsafe {
-            std::mem::transmute::<_, u8>(self.clone())
+            std::mem::transmute::<_, u8>(*self)
         })?;
 
         match self {
@@ -69,8 +70,19 @@ impl fmt::Display for Opcode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum OpData {
     Value(Value),
-    Pointer(Pointer),
+    Pointer(usize),
+    Length(usize),
+}
+
+impl fmt::Display for OpData {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            OpData::Value(value) => write!(f, "0x{value:x}"),
+            OpData::Pointer(pointer) => write!(f, "{pointer}"),
+            OpData::Length(length) => write!(f, "{length}"),
+        }
+    }
 }

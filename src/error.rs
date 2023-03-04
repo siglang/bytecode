@@ -5,6 +5,8 @@ use thiserror::Error;
 pub enum BytecodeError {
     #[error("Value is not provided.")] ValueNotProvided,
     #[error("Pointer is not provided.")] PointerNotProvided,
+    #[error("Length is not provided.")] LengthNotProvided,
+    #[error("Parameter is not provided.")] ParameterNotProvided,
     #[error("Top of the stack is empty.")] StackIsEmpty,
     #[error("Program is empty.")] ProgramIsEmpty,
     #[error("Invalid value.")] InvalidValue,

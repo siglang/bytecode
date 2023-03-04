@@ -4,8 +4,8 @@ use crate::{
 };
 use std::fmt;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Program<'a>(pub &'a [Op]);
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Program<'a>(pub &'a [Op<'a>]);
 
 impl fmt::Display for Program<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -36,8 +36,8 @@ pub struct Vm<'a> {
     pub stack: Stack,
 }
 
-impl Vm<'_> {
-    pub fn new(program: Program) -> Vm {
+impl<'a> Vm<'a> {
+    pub fn new(program: Program<'a>) -> Self {
         Vm {
             program,
             stack: Stack::default(),
@@ -52,18 +52,44 @@ impl Vm<'_> {
                 let first = self.stack.pop()?;
                 let second = self.stack.pop()?;
 
-                self.stack.push(first $op second);
+                self.stack.push(second $op first);
             }};
+        }
+
+        macro_rules! prints {
+            ($op:expr; $expr:expr) => {
+                match $op.data {
+                    Some(data) => match data[0] {
+                        OpData::Length(lens) => {
+                            for _ in 0..lens {
+                                $expr
+                            }
+                        }
+                        _ => return Err(BytecodeError::LengthNotProvided),
+                    },
+                    _ => $expr,
+                }
+            };
         }
 
         while let Some(op) = self.program.0.get(pointer) {
             match op.opcode {
                 Opcode::Noop => {}
                 Opcode::Push => {
-                    if let Some(OpData::Value(value)) = op.data {
-                        self.stack.push(value);
-                    } else {
-                        return Err(BytecodeError::ValueNotProvided);
+                    let values = match op.data {
+                        Some(values) => values,
+                        _ => return Err(BytecodeError::ParameterNotProvided),
+                    };
+
+                    match values {
+                        [values @ ..] => {
+                            for value in values {
+                                match value {
+                                    OpData::Value(value) => self.stack.push(*value),
+                                    _ => return Err(BytecodeError::InvalidValue),
+                                }
+                            }
+                        }
                     }
                 }
                 Opcode::Add => operator! { + },
@@ -71,30 +97,34 @@ impl Vm<'_> {
                 Opcode::Mul => operator! { * },
                 Opcode::Div => operator! { / },
                 Opcode::Mod => operator! { % },
-                Opcode::Jump => {
-                    if let Some(OpData::Pointer(ptr)) = op.data {
-                        pointer = ptr;
+                Opcode::Jump => match op.data {
+                    Some([OpData::Pointer(ptr), ..]) => {
+                        pointer = *ptr;
                         continue;
-                    } else {
-                        return Err(BytecodeError::PointerNotProvided);
                     }
-                }
-                Opcode::JumpIfFalse => {
-                    if let Some(OpData::Pointer(ptr)) = op.data {
+                    _ => return Err(BytecodeError::PointerNotProvided),
+                },
+                Opcode::JumpIfFalse => match op.data {
+                    Some([OpData::Pointer(ptr), ..]) => {
                         if self.stack.pop()? == 0 {
-                            pointer = ptr;
+                            pointer = *ptr;
                             continue;
                         }
-                    } else {
-                        return Err(BytecodeError::PointerNotProvided);
                     }
-                }
-                Opcode::Print => print!("{}", self.stack.pop()?),
-                Opcode::PrintChar => print!(
-                    "{}",
-                    std::char::from_u32(self.stack.pop()? as u32)
-                        .ok_or(BytecodeError::InvalidValue)?
-                ),
+                    _ => return Err(BytecodeError::PointerNotProvided),
+                },
+                Opcode::Print => prints! {
+                    op;
+                    print!("{}", self.stack.pop()?)
+                },
+                Opcode::PrintChar => prints! {
+                    op;
+                    print!(
+                        "{}",
+                        std::char::from_u32(self.stack.pop()? as u32)
+                            .ok_or(BytecodeError::InvalidValue)?
+                    )
+                },
             }
 
             pointer += 1;
