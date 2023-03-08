@@ -59,13 +59,10 @@ impl<'a> Vm<'a> {
         macro_rules! prints {
             ($op:expr; $expr:expr) => {
                 match $op.data {
-                    Some(data) => match data[0] {
-                        OpData::Length(lens) => {
-                            for _ in 0..lens {
-                                $expr
-                            }
+                    Some([OpData::Length(lens), ..]) => {
+                        for _ in 0..*lens {
+                            $expr
                         }
-                        _ => return Err(BytecodeError::LengthNotProvided),
                     },
                     _ => $expr,
                 }
