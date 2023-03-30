@@ -17,10 +17,12 @@ The first program started is also a procedure(the main procedure, `p0`), and it 
     name: "main"; // name of the procedure. when accessing the procedure, the name is not used, and the id is used instead.
     id: 0; // id of the procedure (p0)
     version: 1; // version of the Bytecode (default: 1)
+    arguments: []; // arguments of the procedure
 .proc:
     .meta:
         name: "foo";
         id: 1;
+        arguments: [1, 2];
     .proc:
         .meta:
             name: "bar";
@@ -34,17 +36,21 @@ The first program started is also a procedure(the main procedure, `p0`), and it 
 ```
 
 # Opcodes
+<!-- 
+| Opcode          | Hex    | Parameters    | Description                                                   |
+| --------------- | ------ | ------------- | ------------------------------------------------------------- |
+| `Noop`          | `0x00` |               | Does nothing.                                                 |
+| `Push`          | `0x01` | `...values`   | Push values onto the stack.                                   |
+| `Add`           | `0x02` |               | Pop two values, add them.                                     |
+| `Sub`           | `0x03` |               | Pop two values, subtract them.                                |
+| `Mul`           | `0x04` |               | Pop two values, multiply them.                                |
+| `Div`           | `0x05` |               | Pop two values, divide them.                                  |
+| `Mod`           | `0x06` |               | Pop two values, modulo them.                                  |
+| `Jump`          | `0x07` | `offset`      | Jump to offset (pointer).                                     |
+| `JumpIfFalse`   | `0x08` | `offset`      | If top of stack is `0`, jump to offset.                       |
+| ~~`Print`~~     | `0x09` | `length? = 1` | Pop items off the stack and print them. (deprecated)          |
+| ~~`PrintChar`~~ | `0x0A` | `length? = 1` | Pop items off the stack and print them as chars. (deprecated) |
+| `Call`          | `0x0B` | `id`          | Call procedure with id.                                       |
+| `Arguments`     | `0x0C` |               | -->
 
-| Opcode        | Hex    | Parameters    | Description                                      |
-| ------------- | ------ | ------------- | ------------------------------------------------ |
-| `Noop`        | `0x00` |               | Does nothing.                                    |
-| `Push`        | `0x01` | `...values`   | Push values onto the stack.                      |
-| `Add`         | `0x02` |               | Pop two values, add them.                        |
-| `Sub`         | `0x03` |               | Pop two values, subtract them.                   |
-| `Mul`         | `0x04` |               | Pop two values, multiply them.                   |
-| `Div`         | `0x05` |               | Pop two values, divide them.                     |
-| `Mod`         | `0x06` |               | Pop two values, modulo them.                     |
-| `Jump`        | `0x07` | `offset`      | Jump to offset (pointer).                        |
-| `JumpIfFalse` | `0x08` | `offset`      | If top of stack is `0`, jump to offset.          |
-| `Print`       | `0x09` | `length? = 1` | Pop items off the stack and print them.          |
-| `PrintChar`   | `0x0A` | `length? = 1` | Pop items off the stack and print them as chars. |
+TODO
