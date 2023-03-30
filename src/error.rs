@@ -9,7 +9,6 @@ pub enum BytecodeError {
     #[error("Parameter is not provided.")] ParameterNotProvided,
     #[error("Top of the stack is empty.")] StackIsEmpty,
     #[error("Program is empty.")] ProgramIsEmpty,
-    #[error("Invalid value.")] InvalidValue,
 }
 
 pub type BytecodeResult<T> = Result<T, BytecodeError>;
