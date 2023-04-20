@@ -1,71 +1,20 @@
 use crate::{
-    error::{BytecodeError, BytecodeResult},
-    opcode::{Op, OpData, Opcode, Value},
+    error::BytecodeError,
+    opcode::{Op, OpcodeV1, Value},
 };
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Metadata<'a> {
-    pub name: &'a str,
-    pub id: usize,
-    pub parameters: &'a [Value],
-    // pub version: u8, // TODO
-}
-
-impl<'a> Metadata<'a> {
-    pub fn new(name: &'a str, id: usize, parameters: &'a [Value]) -> Self {
-        Self {
-            name,
-            id,
-            parameters,
-        }
-    }
-}
-
-impl fmt::Display for Metadata<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(
-            f,
-            "name: {} | id: {} | parameters: {:?}",
-            self.name, self.id, self.parameters
-        )?;
-
-        Ok(())
-    }
-}
+pub struct Instructions<'a>(pub &'a [Op]);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Procedure<'a> {
-    pub metadata: Metadata<'a>,
-    pub instructions: &'a [Op],
-    pub procedures: &'a [Procedure<'a>],
-}
+pub struct Program<'a>(pub Instructions<'a>);
 
-impl<'a> Procedure<'a> {
-    pub fn new(
-        metadata: Metadata<'a>,
-        instructions: &'a [Op],
-        procedures: &'a [Procedure],
-    ) -> BytecodeResult<Self> {
-        if instructions.is_empty() {
-            return Err(BytecodeError::ProgramIsEmpty);
-        }
-
-        Ok(Self {
-            metadata,
-            instructions,
-            procedures,
-        })
-    }
-}
-
-impl fmt::Display for Procedure<'_> {
+impl fmt::Display for Program<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (index, op) in self.instructions.iter().enumerate() {
+        for (index, op) in self.0 .0.iter().enumerate() {
             writeln!(f, "{index}: {op}")?;
         }
-
-        writeln!(f, "[Info] {}", self.metadata)?;
 
         Ok(())
     }
@@ -79,38 +28,42 @@ impl Stack {
         self.0.push(value);
     }
 
-    pub fn pop(&mut self) -> BytecodeResult<Value> {
+    pub fn pop(&mut self) -> Result<Value, BytecodeError> {
         self.0.pop().ok_or(BytecodeError::StackIsEmpty)
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Vm<'a> {
-    pub program: Procedure<'a>,
+    pub program: Program<'a>,
     pub stack: Stack,
 }
 
 enum OpExecuted {
     Ok,
     Continue,
+    Break,
 }
 
 impl<'a> Vm<'a> {
-    pub fn new(program: Procedure<'a>) -> Self {
+    pub fn new(program: Program<'a>) -> Self {
         Vm {
             program,
             stack: Stack::default(),
         }
     }
 
-    pub fn run(&mut self) -> BytecodeResult<()> {
+    pub fn run(&mut self) -> Result<(), BytecodeError> {
         let mut pointer = 0;
 
-        while let Some(op) = self.program.instructions.get(pointer) {
+        while let Some(op) = self.program.0 .0.get(pointer) {
             match self.execute_op(op, &mut pointer)? {
                 OpExecuted::Ok => {}
                 OpExecuted::Continue => {
                     continue;
+                }
+                OpExecuted::Break => {
+                    break;
                 }
             }
 
@@ -120,7 +73,7 @@ impl<'a> Vm<'a> {
         Ok(())
     }
 
-    fn execute_op(&mut self, op: &Op, pointer: &mut usize) -> BytecodeResult<OpExecuted> {
+    fn execute_op(&mut self, op: &Op, pointer: &mut usize) -> Result<OpExecuted, BytecodeError> {
         macro_rules! operator {
             ($op:tt) => {{
                 let first = self.stack.pop()?;
@@ -131,59 +84,49 @@ impl<'a> Vm<'a> {
         }
 
         match op.opcode {
-            Opcode::Noop => {}
-            Opcode::Push => {
-                let value = match op.data {
-                    OpData::Value(value) => value,
-                    _ => return Err(BytecodeError::ValueNotProvided),
-                };
-
-                self.stack.push(value);
+            OpcodeV1::Noop => {}
+            OpcodeV1::Push => {
+                if let Some(value) = op.data {
+                    self.stack.push(value);
+                } else {
+                    return Err(BytecodeError::ValueNotProvided);
+                }
             }
-            Opcode::Add => operator! { + },
-            Opcode::Sub => operator! { - },
-            Opcode::Mul => operator! { * },
-            Opcode::Div => operator! { / },
-            Opcode::Mod => operator! { % },
-            Opcode::Jump => match op.data {
-                OpData::Pointer(ptr) => {
-                    *pointer = ptr;
+            OpcodeV1::Add => operator! { + },
+            OpcodeV1::Sub => operator! { - },
+            OpcodeV1::Mul => operator! { * },
+            OpcodeV1::Div => operator! { / },
+            OpcodeV1::Mod => operator! { % },
+            OpcodeV1::Jump => match op.data {
+                Some(value) => {
+                    *pointer = value as usize;
                     return Ok(OpExecuted::Continue);
                 }
-                _ => return Err(BytecodeError::PointerNotProvided),
+                None => return Err(BytecodeError::ValueNotProvided),
             },
-            Opcode::JumpIfFalse => match op.data {
-                OpData::Pointer(ptr) => {
-                    if self.stack.pop()? == 0 {
-                        *pointer = ptr;
+            OpcodeV1::JumpIfFalse => match op.data {
+                Some(value) => {
+                    let condition = self.stack.pop()?;
+                    if condition == 0 {
+                        *pointer = value as usize;
                         return Ok(OpExecuted::Continue);
                     }
                 }
-                _ => return Err(BytecodeError::PointerNotProvided),
+                None => return Err(BytecodeError::ValueNotProvided),
             },
-            Opcode::Print | Opcode::PrintChar => panic!("Deprecated"),
-            Opcode::Call => todo!("Call"),
-            Opcode::Arguments => {
-                todo!();
-                #[allow(unreachable_code)]
-                // self.stack.push(self.program.metadata.parameters.len() as Value); // TODO
-                for parameter in self.program.metadata.parameters {
-                    self.stack.push(*parameter);
-                }
-            }
-            Opcode::Debug => {
-                println!(
-                    "[{} ({})] Debug on pointer {} | Stack: {:?}",
-                    self.program.metadata.name, self.program.metadata.id, pointer, self.stack
-                );
+            OpcodeV1::Print | OpcodeV1::PrintChar => panic!("Deprecated"),
+            OpcodeV1::Call | OpcodeV1::Arguments => panic!("Not implemented"),
+            OpcodeV1::Exit => return Ok(OpExecuted::Break),
+            OpcodeV1::Debug => {
+                println!("[{}] Stack: {:?}", pointer, self.stack);
 
                 match op.data {
-                    OpData::Value(value) => {
+                    Some(value) => {
                         for _ in 0..value {
                             self.stack.pop()?;
                         }
                     }
-                    _ => {
+                    None => {
                         for _ in 0..self.stack.0.len() {
                             self.stack.pop()?;
                         }
@@ -195,14 +138,3 @@ impl<'a> Vm<'a> {
         Ok(OpExecuted::Ok)
     }
 }
-
-// #[derive(Debug, Copy, Clone, PartialEq)]
-// struct ByteCode<'a> {
-//     pub bytes: &'a [u8],
-// }
-
-// impl<'a> From<&'a [u8]> for ByteCode<'a> {
-//     fn from(bytes: &'a [u8]) -> Self {
-//         Self { bytes }
-//     }
-// }

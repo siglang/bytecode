@@ -4,11 +4,7 @@ use thiserror::Error;
 #[rustfmt::skip]
 pub enum BytecodeError {
     #[error("Value is not provided.")] ValueNotProvided,
-    #[error("Pointer is not provided.")] PointerNotProvided,
-    #[error("Length is not provided.")] LengthNotProvided,
-    #[error("Parameter is not provided.")] ParameterNotProvided,
+    #[error("Value kind is not provided.")] ValueKindNotProvided,
     #[error("Top of the stack is empty.")] StackIsEmpty,
-    #[error("Program is empty.")] ProgramIsEmpty,
+    #[error("Invalid opcode: `{0}`.")] InvalidOpcode(u8),
 }
-
-pub type BytecodeResult<T> = Result<T, BytecodeError>;
