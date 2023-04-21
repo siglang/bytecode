@@ -1,26 +1,23 @@
+use crate::{error::BytecodeError, Value};
 use std::fmt;
-
-use crate::error::BytecodeError;
-
-pub type Value = isize;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Op {
     pub opcode: OpcodeV1,
-    pub data: Option<Value>,
+    pub operand: Option<Value>,
 }
 
 impl fmt::Display for Op {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {}", self.opcode, self.data.unwrap_or(0))?;
+        write!(f, "{} {}", self.opcode, self.operand.unwrap_or(0))?;
 
         Ok(())
     }
 }
 
 impl Op {
-    pub fn new(opcode: OpcodeV1, data: Option<Value>) -> Self {
-        Self { opcode, data }
+    pub fn new(opcode: OpcodeV1, operand: Option<Value>) -> Self {
+        Self { opcode, operand }
     }
 }
 
@@ -47,10 +44,6 @@ pub enum OpcodeV1 {
 
 impl fmt::Display for OpcodeV1 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "[0x{:x}] ", unsafe {
-            std::mem::transmute::<_, u8>(*self)
-        })?;
-
         match self {
             OpcodeV1::Noop => write!(f, "Noop"),
             OpcodeV1::Push => write!(f, "Push"),
@@ -93,5 +86,26 @@ impl TryFrom<u8> for OpcodeV1 {
             0xFF => OpcodeV1::Debug,
             _ => return Err(BytecodeError::InvalidOpcode(opcode)),
         })
+    }
+}
+
+impl<'a> From<&'a str> for OpcodeV1 {
+    fn from(opcode: &'a str) -> Self {
+        match opcode {
+            "noop" => OpcodeV1::Noop,
+            "push" => OpcodeV1::Push,
+            "add" => OpcodeV1::Add,
+            "sub" => OpcodeV1::Sub,
+            "mul" => OpcodeV1::Mul,
+            "div" => OpcodeV1::Div,
+            "mod" => OpcodeV1::Mod,
+            "jump" => OpcodeV1::Jump,
+            "jump_if_false" => OpcodeV1::JumpIfFalse,
+            "call" => OpcodeV1::Call,
+            "arguments" => OpcodeV1::Arguments,
+            "exit" => OpcodeV1::Exit,
+            "debug" => OpcodeV1::Debug,
+            _ => panic!("Invalid opcode: {}", opcode),
+        }
     }
 }

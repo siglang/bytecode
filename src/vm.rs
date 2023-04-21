@@ -1,6 +1,7 @@
 use crate::{
     error::BytecodeError,
-    opcode::{Op, OpcodeV1, Value},
+    opcode::{Op, OpcodeV1},
+    Pointer, Value,
 };
 use std::fmt;
 
@@ -73,7 +74,7 @@ impl<'a> Vm<'a> {
         Ok(())
     }
 
-    fn execute_op(&mut self, op: &Op, pointer: &mut usize) -> Result<OpExecuted, BytecodeError> {
+    fn execute_op(&mut self, op: &Op, pointer: &mut Pointer) -> Result<OpExecuted, BytecodeError> {
         macro_rules! operator {
             ($op:tt) => {{
                 let first = self.stack.pop()?;
@@ -86,7 +87,7 @@ impl<'a> Vm<'a> {
         match op.opcode {
             OpcodeV1::Noop => {}
             OpcodeV1::Push => {
-                if let Some(value) = op.data {
+                if let Some(value) = op.operand {
                     self.stack.push(value);
                 } else {
                     return Err(BytecodeError::ValueNotProvided);
@@ -97,18 +98,18 @@ impl<'a> Vm<'a> {
             OpcodeV1::Mul => operator! { * },
             OpcodeV1::Div => operator! { / },
             OpcodeV1::Mod => operator! { % },
-            OpcodeV1::Jump => match op.data {
+            OpcodeV1::Jump => match op.operand {
                 Some(value) => {
-                    *pointer = value as usize;
+                    *pointer = value as Pointer;
                     return Ok(OpExecuted::Continue);
                 }
                 None => return Err(BytecodeError::ValueNotProvided),
             },
-            OpcodeV1::JumpIfFalse => match op.data {
+            OpcodeV1::JumpIfFalse => match op.operand {
                 Some(value) => {
                     let condition = self.stack.pop()?;
                     if condition == 0 {
-                        *pointer = value as usize;
+                        *pointer = value as Pointer;
                         return Ok(OpExecuted::Continue);
                     }
                 }
@@ -120,17 +121,21 @@ impl<'a> Vm<'a> {
             OpcodeV1::Debug => {
                 println!("[{}] Stack: {:?}", pointer, self.stack);
 
-                match op.data {
-                    Some(value) => {
-                        for _ in 0..value {
-                            self.stack.pop()?;
+                match op.operand {
+                    Some(value) => match value {
+                        0 => {
+                            for _ in 0..value {
+                                self.stack.pop()?;
+                            }
                         }
-                    }
-                    None => {
-                        for _ in 0..self.stack.0.len() {
-                            self.stack.pop()?;
+                        1 => {
+                            for _ in 0..self.stack.0.len() {
+                                self.stack.pop()?;
+                            }
                         }
-                    }
+                        _ => {}
+                    },
+                    None => return Err(BytecodeError::ValueNotProvided),
                 }
             }
         };
