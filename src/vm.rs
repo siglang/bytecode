@@ -84,6 +84,15 @@ impl<'a> Vm<'a> {
             }};
         }
 
+        macro_rules! inequality {
+            ($op:tt) => {{
+                let first = self.stack.pop()?;
+                let second = self.stack.pop()?;
+
+                self.stack.push(if second $op first { 1 } else { 0 });
+            }};
+        }
+
         match op.opcode {
             OpcodeV1::Noop => {}
             OpcodeV1::Push => {
@@ -115,8 +124,10 @@ impl<'a> Vm<'a> {
                 }
                 None => return Err(BytecodeError::ValueNotProvided),
             },
-            OpcodeV1::Print | OpcodeV1::PrintChar => panic!("Deprecated"),
-            OpcodeV1::Call | OpcodeV1::Arguments => panic!("Not implemented"),
+            OpcodeV1::GT => inequality! { > },
+            OpcodeV1::LT => inequality! { < },
+            OpcodeV1::GTE => inequality! { >= },
+            OpcodeV1::LTE => inequality! { <= },
             OpcodeV1::Exit => return Ok(OpExecuted::Break),
             OpcodeV1::Debug => {
                 println!("[{}] Stack: {:?}", pointer, self.stack);

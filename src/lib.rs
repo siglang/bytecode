@@ -28,16 +28,26 @@ impl<'a> Code<'a> {
         vm::Instructions(Box::leak(instructions.into_boxed_slice()))
     }
 
-    fn parse_op(split_whitespace: Vec<&str>) -> opcode::Op {
-        let opcode = split_whitespace[0];
+    fn parse_op(op: Vec<&str>) -> opcode::Op {
+        let opcode = op[0];
 
         match opcode.to_lowercase().as_str() {
-            "push" | "jump" | "jump_if_false" | "debug" => {
-                let operand = split_whitespace.get(1).map(|s| {
-                    if s.starts_with("0x") {
-                        isize::from_str_radix(s.trim_start_matches("0x"), 16).unwrap()
+            "jump" | "jump_if_false" | "debug" => {
+                let operand = op.get(1).map(|s| {
+                    (if s.starts_with("0x") {
+                        Pointer::from_str_radix(s.trim_start_matches("0x"), 16).unwrap()
                     } else {
-                        s.parse::<isize>().unwrap()
+                        s.parse::<Pointer>().unwrap()
+                    }) as Value
+                });
+                opcode::Op::new(opcode::OpcodeV1::from(opcode), operand)
+            }
+            "push" => {
+                let operand = op.get(1).map(|s| {
+                    if s.starts_with("0x") {
+                        Value::from_str_radix(s.trim_start_matches("0x"), 16).unwrap()
+                    } else {
+                        s.parse::<Value>().unwrap()
                     }
                 });
                 opcode::Op::new(opcode::OpcodeV1::from(opcode), operand)
