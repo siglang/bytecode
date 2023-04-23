@@ -6,28 +6,15 @@ use bytecode::{
 
 fn main() {
     let test = r#"
-push 2 ;          0
-push 3 ;          1
-lte ;             2
-jump_if_false 5 ; 3
-jump 12 ;         4
+push 2 ;     0, stack: [ 2 ]
+push 3 ;     1, stack: [ 2, 3 ]
 
-push 0x65 ;       5
-push 0x73 ;       6
-push 0x6C ;       7
-push 0x61 ;       8
-push 0x46 ;       9
-debug 0x00 ;      10
+proc 2 ;     2: square, jump to `pc (= 2)` + `instruction length (= 2)` + `1 (proc)` (= `pointer 5`)
+    mul ;    3, stack: [ 6 ]
+    return ; 4, call stack pop, jump to `pointer 6` (StackFrame)
 
-jump 15 ;         11
-
-push 0x65 ;       12
-push 0x75 ;       13
-push 0x72 ;       14
-push 0x54 ;       15
-debug 0x00 ;      16
-
-noop ;            17
+call 3     ; 5, jump to `pointer 3`, call stack: [ StackFrame { pointer: 6 } ]
+debug 0    ; 6, stack: [ 6 ]
         "#;
 
     let rawbytes: RawBytes = Instructions(Code(test).parse().0).into();
