@@ -1,5 +1,5 @@
 use crate::{
-    error::BytecodeError,
+    error::{BytecodeError, BytecodeErrorKind},
     opcode::{Op, OpcodeV1},
     Pointer, Value,
 };
@@ -30,7 +30,7 @@ impl Stack {
     }
 
     pub fn pop(&mut self) -> Result<Value, BytecodeError> {
-        self.0.pop().ok_or(BytecodeError::StackIsEmpty)
+        self.0.pop().ok_or((BytecodeErrorKind::StackIsEmpty, None))
     }
 }
 
@@ -38,7 +38,15 @@ impl Stack {
 pub struct Vm<'a> {
     pub program: Program<'a>,
     pub stack: Stack,
+    pub call_stack: CallStack,
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StackFrame {
+    pub pointer: Pointer,
+}
+
+pub type CallStack = Vec<StackFrame>;
 
 enum OpExecuted {
     Ok,
@@ -51,6 +59,7 @@ impl<'a> Vm<'a> {
         Vm {
             program,
             stack: Stack::default(),
+            call_stack: CallStack::default(),
         }
     }
 
@@ -75,6 +84,7 @@ impl<'a> Vm<'a> {
     }
 
     fn execute_op(&mut self, op: &Op, pointer: &mut Pointer) -> Result<OpExecuted, BytecodeError> {
+        println!("Executing op: {:?}", op);
         macro_rules! operator {
             ($op:tt) => {{
                 let first = self.stack.pop()?;
@@ -99,7 +109,7 @@ impl<'a> Vm<'a> {
                 if let Some(value) = op.operand {
                     self.stack.push(value);
                 } else {
-                    return Err(BytecodeError::ValueNotProvided);
+                    return Err((BytecodeErrorKind::ValueNotProvided, Some(*pointer)));
                 }
             }
             OpcodeV1::Add => operator! { + },
@@ -112,7 +122,7 @@ impl<'a> Vm<'a> {
                     *pointer = value as Pointer;
                     return Ok(OpExecuted::Continue);
                 }
-                None => return Err(BytecodeError::ValueNotProvided),
+                None => return Err((BytecodeErrorKind::ValueNotProvided, Some(*pointer))),
             },
             OpcodeV1::JumpIfFalse => match op.operand {
                 Some(value) => {
@@ -122,12 +132,51 @@ impl<'a> Vm<'a> {
                         return Ok(OpExecuted::Continue);
                     }
                 }
-                None => return Err(BytecodeError::ValueNotProvided),
+                None => return Err((BytecodeErrorKind::ValueNotProvided, Some(*pointer))),
             },
             OpcodeV1::GT => inequality! { > },
             OpcodeV1::LT => inequality! { < },
             OpcodeV1::GTE => inequality! { >= },
             OpcodeV1::LTE => inequality! { <= },
+            OpcodeV1::EQ => inequality! { == },
+            // `proc [procedure instructions length]`
+            //
+            // All instructions in the procedure are ignored.
+            // cannot use the procedure until it is called.
+            //
+            // proc 4
+            //    push 1
+            //    push 2
+            //    mul
+            //    return
+            OpcodeV1::Proc => match op.operand {
+                Some(value) => {
+                    *pointer = *pointer + (value as Pointer) + 1 /* proc */;
+                    return Ok(OpExecuted::Continue);
+                }
+                None => return Err((BytecodeErrorKind::ValueNotProvided, Some(*pointer))),
+            },
+            OpcodeV1::Call => match op.operand {
+                Some(value) => {
+                    self.call_stack.push(StackFrame {
+                        pointer: *pointer + 1,
+                    });
+
+                    *pointer = value as Pointer;
+
+                    return Ok(OpExecuted::Continue);
+                }
+                None => return Err((BytecodeErrorKind::ValueNotProvided, Some(*pointer))),
+            },
+            OpcodeV1::Return => {
+                let frame = self
+                    .call_stack
+                    .pop()
+                    .ok_or((BytecodeErrorKind::CallStackIsEmpty, Some(*pointer)))?;
+                *pointer = frame.pointer;
+
+                return Ok(OpExecuted::Continue);
+            }
             OpcodeV1::Exit => return Ok(OpExecuted::Break),
             OpcodeV1::Debug => {
                 println!("[{}] Stack: {:?}", pointer, self.stack);
@@ -146,7 +195,7 @@ impl<'a> Vm<'a> {
                         }
                         _ => {}
                     },
-                    None => return Err(BytecodeError::ValueNotProvided),
+                    None => return Err((BytecodeErrorKind::ValueNotProvided, Some(*pointer))),
                 }
             }
         };

@@ -32,7 +32,7 @@ impl<'a> Code<'a> {
         let opcode = op[0];
 
         match opcode.to_lowercase().as_str() {
-            "jump" | "jump_if_false" | "debug" => {
+            "jump" | "jump_if_false" | "debug" | "proc" | "call" => {
                 let operand = op.get(1).map(|s| {
                     (if s.starts_with("0x") {
                         Pointer::from_str_radix(s.trim_start_matches("0x"), 16).unwrap()
@@ -40,7 +40,7 @@ impl<'a> Code<'a> {
                         s.parse::<Pointer>().unwrap()
                     }) as Value
                 });
-                opcode::Op::new(opcode::OpcodeV1::from(opcode), operand)
+                opcode::Op::new(opcode::OpcodeV1::try_from(opcode).unwrap(), operand)
             }
             "push" => {
                 let operand = op.get(1).map(|s| {
@@ -50,9 +50,9 @@ impl<'a> Code<'a> {
                         s.parse::<Value>().unwrap()
                     }
                 });
-                opcode::Op::new(opcode::OpcodeV1::from(opcode), operand)
+                opcode::Op::new(opcode::OpcodeV1::try_from(opcode).unwrap(), operand)
             }
-            _ => opcode::Op::new(opcode::OpcodeV1::from(opcode), None),
+            _ => opcode::Op::new(opcode::OpcodeV1::try_from(opcode).unwrap(), None),
         }
     }
 }

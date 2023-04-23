@@ -1,4 +1,7 @@
-use crate::{error::BytecodeError, Value};
+use crate::{
+    error::{BytecodeError, BytecodeErrorKind},
+    Value,
+};
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -38,28 +41,38 @@ pub enum OpcodeV1 {
     LT = 0x0A,
     GTE = 0x0B,
     LTE = 0x0C,
+    EQ = 0x0D,
+    Proc = 0x0E,
+    Call = 0x0F,
+    Return = 0x10,
     Exit = 0xFE,
     Debug = 0xFF,
 }
 
 impl fmt::Display for OpcodeV1 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use OpcodeV1::*;
+
         match self {
-            OpcodeV1::Noop => write!(f, "Noop"),
-            OpcodeV1::Push => write!(f, "Push"),
-            OpcodeV1::Add => write!(f, "Add"),
-            OpcodeV1::Sub => write!(f, "Sub"),
-            OpcodeV1::Mul => write!(f, "Mul"),
-            OpcodeV1::Div => write!(f, "Div"),
-            OpcodeV1::Mod => write!(f, "Mod"),
-            OpcodeV1::Jump => write!(f, "Jump"),
-            OpcodeV1::JumpIfFalse => write!(f, "JumpIfFalse"),
-            OpcodeV1::GT => write!(f, "GT"),
-            OpcodeV1::LT => write!(f, "LT"),
-            OpcodeV1::GTE => write!(f, "GTE"),
-            OpcodeV1::LTE => write!(f, "LTE"),
-            OpcodeV1::Exit => write!(f, "Exit"),
-            OpcodeV1::Debug => write!(f, "Debug"),
+            Noop => write!(f, "Noop"),
+            Push => write!(f, "Push"),
+            Add => write!(f, "Add"),
+            Sub => write!(f, "Sub"),
+            Mul => write!(f, "Mul"),
+            Div => write!(f, "Div"),
+            Mod => write!(f, "Mod"),
+            Jump => write!(f, "Jump"),
+            JumpIfFalse => write!(f, "JumpIfFalse"),
+            GT => write!(f, "GT"),
+            LT => write!(f, "LT"),
+            GTE => write!(f, "GTE"),
+            LTE => write!(f, "LTE"),
+            EQ => write!(f, "EQ"),
+            Proc => write!(f, "Proc"),
+            Call => write!(f, "Call"),
+            Return => write!(f, "Return"),
+            Exit => write!(f, "Exit"),
+            Debug => write!(f, "Debug"),
         }
     }
 }
@@ -68,46 +81,60 @@ impl TryFrom<u8> for OpcodeV1 {
     type Error = BytecodeError;
 
     fn try_from(opcode: u8) -> Result<Self, Self::Error> {
+        use OpcodeV1::*;
+
         Ok(match opcode {
-            0x00 => OpcodeV1::Noop,
-            0x01 => OpcodeV1::Push,
-            0x02 => OpcodeV1::Add,
-            0x03 => OpcodeV1::Sub,
-            0x04 => OpcodeV1::Mul,
-            0x05 => OpcodeV1::Div,
-            0x06 => OpcodeV1::Mod,
-            0x07 => OpcodeV1::Jump,
-            0x08 => OpcodeV1::JumpIfFalse,
-            0x09 => OpcodeV1::GT,
-            0x0A => OpcodeV1::LT,
-            0x0B => OpcodeV1::GTE,
-            0x0C => OpcodeV1::LTE,
-            0xFE => OpcodeV1::Exit,
-            0xFF => OpcodeV1::Debug,
-            _ => return Err(BytecodeError::InvalidOpcode(opcode)),
+            0x00 => Noop,
+            0x01 => Push,
+            0x02 => Add,
+            0x03 => Sub,
+            0x04 => Mul,
+            0x05 => Div,
+            0x06 => Mod,
+            0x07 => Jump,
+            0x08 => JumpIfFalse,
+            0x09 => GT,
+            0x0A => LT,
+            0x0B => GTE,
+            0x0C => LTE,
+            0x0D => EQ,
+            0x0E => Proc,
+            0x0F => Call,
+            0x10 => Return,
+            0xFE => Exit,
+            0xFF => Debug,
+            _ => return Err((BytecodeErrorKind::InvalidOpcode(opcode), None)),
         })
     }
 }
 
-impl<'a> From<&'a str> for OpcodeV1 {
-    fn from(opcode: &'a str) -> Self {
-        match opcode {
-            "noop" => OpcodeV1::Noop,
-            "push" => OpcodeV1::Push,
-            "add" => OpcodeV1::Add,
-            "sub" => OpcodeV1::Sub,
-            "mul" => OpcodeV1::Mul,
-            "div" => OpcodeV1::Div,
-            "mod" => OpcodeV1::Mod,
-            "jump" => OpcodeV1::Jump,
-            "jump_if_false" => OpcodeV1::JumpIfFalse,
-            "gt" => OpcodeV1::GT,
-            "lt" => OpcodeV1::LT,
-            "gte" => OpcodeV1::GTE,
-            "lte" => OpcodeV1::LTE,
-            "exit" => OpcodeV1::Exit,
-            "debug" => OpcodeV1::Debug,
-            _ => panic!("Invalid opcode: {}", opcode),
-        }
+impl<'a> TryFrom<&'a str> for OpcodeV1 {
+    type Error = BytecodeError;
+
+    fn try_from(opcode: &'a str) -> Result<Self, Self::Error> {
+        use OpcodeV1::*;
+
+        Ok(match opcode {
+            "noop" => Noop,
+            "push" => Push,
+            "add" => Add,
+            "sub" => Sub,
+            "mul" => Mul,
+            "div" => Div,
+            "mod" => Mod,
+            "jump" => Jump,
+            "jump_if_false" => JumpIfFalse,
+            "gt" => GT,
+            "lt" => LT,
+            "gte" => GTE,
+            "lte" => LTE,
+            "eq" => EQ,
+            "proc" => Proc,
+            "call" => Call,
+            "return" => Return,
+            "exit" => Exit,
+            "debug" => Debug,
+            _ => return Err((BytecodeErrorKind::InvalidOpcode2(opcode.to_string()), None)),
+        })
     }
 }
