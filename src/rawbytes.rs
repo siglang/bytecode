@@ -14,19 +14,6 @@ impl<'a> From<&'a [u8]> for RawBytes<'a> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct ByteCode<'a> {
-    pub bytes: RawBytes<'a>,
-}
-
-impl<'a> From<&'a [u8]> for ByteCode<'a> {
-    fn from(bytes: &'a [u8]) -> Self {
-        Self {
-            bytes: bytes.into(),
-        }
-    }
-}
-
 impl<'a> TryFrom<RawBytes<'a>> for Instructions<'a> {
     type Error = BytecodeError;
 
