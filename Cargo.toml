@@ -13,3 +13,4 @@ path = "bin/main.rs"
 
 [dependencies]
 thiserror = "1.0.37"
+clap = { version = "4.1.4", features = ["derive"] }

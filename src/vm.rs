@@ -84,7 +84,6 @@ impl<'a> Vm<'a> {
     }
 
     fn execute_op(&mut self, op: &Op, pointer: &mut Pointer) -> Result<OpExecuted, BytecodeError> {
-        println!("Executing op: {:?}", op);
         macro_rules! operator {
             ($op:tt) => {{
                 let first = self.stack.pop()?;
