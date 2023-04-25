@@ -182,17 +182,16 @@ impl<'a> Vm<'a> {
 
                 match op.operand {
                     Some(value) => match value {
-                        0 => {
-                            for _ in 0..value {
-                                self.stack.pop()?;
-                            }
-                        }
-                        1 => {
+                        -1 => {
                             for _ in 0..self.stack.0.len() {
                                 self.stack.pop()?;
                             }
                         }
-                        _ => {}
+                        _ => {
+                            for _ in 0..value {
+                                self.stack.pop()?;
+                            }
+                        }
                     },
                     None => return Err((BytecodeErrorKind::ValueNotProvided, Some(*pointer))),
                 }
