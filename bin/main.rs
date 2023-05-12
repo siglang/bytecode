@@ -1,11 +1,12 @@
-use std::{fs, path::PathBuf};
+mod code;
 
 use bytecode::{
     rawbytes::RawBytes,
     vm::{Instructions, Program, Vm},
-    Code,
 };
 use clap::{Parser, Subcommand};
+use code::Code;
+use std::{fs, path::PathBuf};
 
 #[derive(Parser, Debug)]
 #[clap(
@@ -68,10 +69,4 @@ fn main() {
             Vm::new(program).run().unwrap();
         }
     }
-
-    // let instructions: Instructions = rawbytes.try_into().unwrap();
-
-    // let program = Program(instructions);
-
-    // Vm::new(program).run().unwrap();
 }
