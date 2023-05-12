@@ -1,3 +1,34 @@
+Bytecode instruction set and stack based virtual machine.
+
+# Usage
+
+```
+Usage: bytecode <COMMAND>
+
+Commands:
+  b2r        ByteCode source code file -> RawBytes file  [ByteCode -> RawBytes]
+  interpret  Interpret RawBytes file                     [RawBytes -> Execution]
+  run        Run ByteCode source code file               [ByteCode -> Execution]
+  help       Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
+```
+
+`RawBytes` is data consisting of raw bytecode instructions and data.
+
+## Bytecode file
+
+A small language exists to facilitate bytecode representation and is very simple to use.
+
+```
+opcode [operand] ; comment
+
+push 2           ; Push 2 onto the stack.
+push 0xFF        ; Push 255 onto the stack.
+```
+
 # Opcodes
 
 | Opcode        | Hex             | Operand  | Stack                   | Description                                                                  |
