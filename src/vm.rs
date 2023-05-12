@@ -132,16 +132,6 @@ impl<'a> Vm<'a> {
             OpcodeV1::GTE => inequality! { >= },
             OpcodeV1::LTE => inequality! { <= },
             OpcodeV1::EQ => inequality! { == },
-            // `proc [procedure instructions length]`
-            //
-            // All instructions in the procedure are ignored.
-            // cannot use the procedure until it is called.
-            //
-            // proc 4
-            //    push 1
-            //    push 2
-            //    mul
-            //    return
             OpcodeV1::Proc => {
                 *pointer = *pointer + (self.get_operand(op, *pointer)? as Pointer) + 1 /* proc */;
                 return Ok(OpExecuted::Continue);
