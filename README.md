@@ -7,8 +7,7 @@ Usage: bytecode <COMMAND>
 
 Commands:
   b2r        ByteCode source code file -> RawBytes file  [ByteCode -> RawBytes]
-  interpret  Interpret RawBytes file                     [RawBytes -> Execution]
-  run        Run ByteCode source code file               [ByteCode -> Execution]
+  run        Interpret RawBytes file                     [RawBytes -> Execution]
   help       Print this message or the help of the given subcommand(s)
 
 Options:
@@ -17,6 +16,11 @@ Options:
 ```
 
 `RawBytes` is data consisting of raw bytecode instructions and data.
+
+```console
+$ bytecode b2r -i examples/example1 -o examples/example1.raw
+$ bytecode run -i examples/example1.raw
+```
 
 ## Bytecode file
 
@@ -50,7 +54,9 @@ push 0xFF        ; Push 255 onto the stack.
 | `Proc`        | `0x0E`          | `length` | `[.., ptr] -> [..]`     | Instruction to delimit a procedure. instructions after `length` are omitted. |
 | `Call`        | `0x0F`          | `offset` | `[.., ptr] -> [..]`     | Call procedure at `offset`.                                                  |
 | `Ret`         | `0x10`          |          |                         | Return from procedure. See [procedures](#procedures) for more details.       |
-|               | `0x11` ~ `0xFD` |          |                         | Not used.                                                                    |
+| `Store`       | `0x11`          | `index`  | `[.., value] -> [..]`   | Pop value and store it at index.                                             |
+| `Load`        | `0x12`          | `index`  | `[..] -> [.., value]`   | Load value at index and push it onto the stack.                              |
+|               | `0x13` ~ `0xFD` |          |                         | Not used.                                                                    |
 | `Exit`        | `0xFE`          |          |                         | Exit the program.                                                            |
 | `Debug`       | `0xFF`          | `value`  | Description             | Print the stack. `-1` = pops all, `value` = pops `value` items.              |
 
@@ -74,14 +80,4 @@ noop       ; 4, Executed after the procedure runs.
 
 ### Example
 
-```
-push 2     ; 0, stack: [ 2 ]
-push 3     ; 1, stack: [ 2, 3 ]
-
-proc 2     ; 2: square, jump to `pc (= 2)` + `instruction length (= 2)` + `1 (proc)` (= `pointer 5`)
-    mul    ; 3, stack: [ 6 ]
-    return ; 4, call stack pop, jump to `pointer 6` (StackFrame)
-
-call 3     ; 5, jump to `pointer 3`, call stack: [ StackFrame { pointer: 6 } ]
-debug 0    ; 6, stack: [ 6 ]
-```
+See [examples](./examples) for more examples.
