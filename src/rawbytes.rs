@@ -29,7 +29,7 @@ impl<'a> TryFrom<RawBytes<'a>> for Instructions<'a> {
             let opcode = OpcodeV1::try_from(bytes[index])?;
 
             match opcode {
-                Push | Jump | JumpIfFalse | Debug | Proc | Call => {
+                Push | Jump | JumpIfFalse | Debug | Proc | Call | Store | Load => {
                     let mut value_bytes = [0; 8];
                     value_bytes.copy_from_slice(&bytes[index + 1..index + 9]);
 

@@ -3,12 +3,12 @@ use crate::{
     opcode::{Op, OpcodeV1},
     Pointer, Value,
 };
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Instructions<'a>(pub &'a [Op]);
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Program<'a>(pub Instructions<'a>);
 
 impl fmt::Display for Program<'_> {
@@ -22,7 +22,7 @@ impl fmt::Display for Program<'_> {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct Stack(pub Vec<Value>);
+struct Stack(pub Vec<Value>);
 
 impl Stack {
     pub fn push(&mut self, value: Value) {
@@ -34,19 +34,22 @@ impl Stack {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Vm<'a> {
     pub program: Program<'a>,
-    pub stack: Stack,
-    pub call_stack: CallStack,
+    stack: Stack,
+    call_stack: CallStack,
+    store: Store,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct StackFrame {
-    pub pointer: Pointer,
+struct CallStackFrame {
+    pointer: Pointer,
 }
 
-pub type CallStack = Vec<StackFrame>;
+type CallStack = Vec<CallStackFrame>;
+
+type Store = HashMap<usize, Value>;
 
 enum OpExecuted {
     Ok,
@@ -58,8 +61,7 @@ impl<'a> Vm<'a> {
     pub fn new(program: Program<'a>) -> Self {
         Vm {
             program,
-            stack: Stack::default(),
-            call_stack: CallStack::default(),
+            ..Default::default()
         }
     }
 
@@ -137,7 +139,7 @@ impl<'a> Vm<'a> {
                 return Ok(OpExecuted::Continue);
             }
             OpcodeV1::Call => {
-                self.call_stack.push(StackFrame {
+                self.call_stack.push(CallStackFrame {
                     pointer: *pointer + 1,
                 });
 
@@ -152,6 +154,21 @@ impl<'a> Vm<'a> {
                 *pointer = frame.pointer;
 
                 return Ok(OpExecuted::Continue);
+            }
+            OpcodeV1::Store => {
+                let value = self.stack.pop()?;
+                let key = self.get_operand(op, *pointer)? as usize;
+
+                self.store.insert(key, value);
+            }
+            OpcodeV1::Load => {
+                let key = self.get_operand(op, *pointer)? as usize;
+                let value = self
+                    .store
+                    .get(&key)
+                    .ok_or((BytecodeErrorKind::StoreIndexNotFound(key), Some(*pointer)))?;
+
+                self.stack.push(*value);
             }
             OpcodeV1::Exit => return Ok(OpExecuted::Break),
             OpcodeV1::Debug => {
