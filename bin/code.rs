@@ -30,7 +30,7 @@ impl<'a> Code<'a> {
         let opcode = op[0];
 
         match opcode.to_lowercase().as_str() {
-            "jump" | "jump_if_false" | "debug" | "proc" | "call" => {
+            "jump" | "jump_if_false" | "debug" | "proc" | "call" | "store" | "load" => {
                 let operand = op.get(1).map(|s| {
                     (if s.starts_with("0x") {
                         Pointer::from_str_radix(s.trim_start_matches("0x"), 16).unwrap()

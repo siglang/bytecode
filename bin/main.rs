@@ -28,12 +28,7 @@ pub enum SubCommand {
         #[clap(short, long)]
         output: PathBuf,
     },
-    #[clap(name = "interpret", about = "Interpret RawBytes file")]
-    Interpret {
-        #[clap(short, long)]
-        input: PathBuf,
-    },
-    #[clap(name = "run", about = "Run ByteCode source code file")]
+    #[clap(name = "run", about = "Interpret RawBytes file")]
     Run {
         #[clap(short, long)]
         input: PathBuf,
@@ -51,18 +46,9 @@ fn main() {
 
             fs::write(output, rawbytes.0).unwrap();
         }
-        SubCommand::Interpret { input } => {
+        SubCommand::Run { input } => {
             let contents = fs::read(input).unwrap();
             let rawbytes = RawBytes(&contents);
-            let instructions: Instructions = rawbytes.try_into().unwrap();
-            let program = Program(instructions);
-
-            Vm::new(program).run().unwrap();
-        }
-        SubCommand::Run { input } => {
-            let bytecode = fs::read_to_string(input).unwrap();
-            let parsed = Code(&bytecode).parse().0;
-            let rawbytes: RawBytes = Instructions(parsed).into();
             let instructions: Instructions = rawbytes.try_into().unwrap();
             let program = Program(instructions);
 
